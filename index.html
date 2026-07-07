@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>候補者情報一括抽出・ブックマークレット導入ページ</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px 20px; background: #f0f4f8; }
+        .card { background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        h1 { color: #1e293b; font-size: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        h2 { color: #0f172a; font-size: 18px; margin-top: 20px; }
+        p { color: #475569; }
+        .bookmarklet-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff !important;
+            font-weight: bold;
+            padding: 14px 28px;
+            border-radius: 50px;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+            transition: all 0.2s ease;
+            cursor: move;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+        .bookmarklet-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(5, 150, 105, 0.4);
+        }
+        .notice { background: #fffbeb; border-left: 4px solid #d97706; padding: 15px; color: #b45309; border-radius: 4px; font-size: 14px; margin-top: 15px; }
+        ol { padding-left: 20px; color: #475569; }
+        li { margin-bottom: 10px; }
+        code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>👥 候補者情報一括抽出・テキスト自動ビルドツール</h1>
+        <p>人材紹介業務における候補者（CAN）情報のリスト化・データ集計プロセスを高速化するスクリプトです。</p>
+        
+        <h2>🚀 登録方法</h2>
+        <p>下の緑色のボタンをマウスで掴んで、ブラウザの<strong>「ブックマークバー（お気に入りバー）」までドラッグ＆ドロップ</strong>して離してください。</p>
+        
+        <div style="text-align: center;">
+            <a class="bookmarklet-btn" href="javascript:(async function(){const rows=document.querySelectorAll('.listTable tbody tr');if(rows.length===0){alert('検索結果のテーブルが見つかりません。CAN検索画面（一覧）で実行してください。');return;}const confirmRun=confirm('一覧に表示されている最大50件の候補者詳細データをバックグラウンドで一括取得し、テキストファイルで自動ダウンロードします。\\n完了まで別タブで作業してOKです。よろしいですか？');if(!confirmRun)return;const progressDiv=document.createElement('div');progressDiv.style='position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.8);color:#fff;padding:15px;z-index:99999;border-radius:5px;font-size:14px;font-family:sans-serif;';progressDiv.innerText='データ取得準備中...';document.body.appendChild(progressDiv);const now=new Date();let allTextOutput=`【50件一括抽出データ】\\nデータ抽出日時: ${now.toLocaleString()}\\n\\n`;let successCount=0;let targetRows=[];rows.forEach(row=>{const detailBtn=row.querySelector('button[onclick^=&quot;open_cn_detail&quot;]');if(detailBtn){const match=detailBtn.getAttribute('onclick').match(/\\d+/);if(match){targetRows.push({id:match[0],name:row.cells[1]?row.cells[1].innerText.replace(/\\s+/g,''):'不明'});}}});if(targetRows.length===0){alert('取得対象の候補者（開くボタン）が見つかりませんでした。');document.body.removeChild(progressDiv);return;}for(let i=0;i<targetRows.length;i++){const target=targetRows[i];progressDiv.innerText=`【データ取得中】 ${i+1} / ${targetRows.length} 人目: ${target.name} 様`;try{const res=await fetch(`/cn/detail/${target.id}`);const htmlText=await res.text();const parser=new DOMParser();const doc=parser.parseFromString(htmlText,'text/html');const getValue=id=>doc.getElementById(id)?doc.getElementById(id).value.trim():'';const getSelectText=id=>{const el=doc.getElementById(id);return el&&el.selectedIndex!==-1?el.options[el.selectedIndex].text.trim():'';};const sei=getValue('SEI');const mei=getValue('MEI');const age=getValue('AGE');const ouboRoot=getSelectText('OUBO_ROUTE');const status=getSelectText('STATUS');const prefecture=getSelectText('PREFECTURE');const address=getValue('ADDRESS');const school=getValue('SCHOOL_NAME');const schoolType=getSelectText('SCHOOL_TYPE');const comment=getValue('COMMENT');const bikou=getValue('BIKOU');let nenshuNow=getValue('CURR_ANNUAL_INCOME');let nenshuKibouMin=getValue('REQ_ANNUAL_INCOME_MIN');let nenshuKibouMax=getValue('REQ_ANNUAL_INCOME_MAX');let syokusyu=[];for(let j=1;j<=3;j++){let s=getSelectText(`DESIRED_JOB_${j}`);if(s&&s!=='選択してください')syokusyu.push(s);}allTextOutput+=`==================================================\\n`;allTextOutput+=`【候補者 ${i+1}】\\n`;allTextOutput+=`CANID: ${target.id}\\n`;allTextOutput+=`氏名: ${sei} ${mei} (${target.name})\\n`;allTextOutput+=`年齢: ${age}歳\\n`;allTextOutput+=`ステータス: ${status}\\n`;allTextOutput+=`応募経路: ${ouboRoot}\\n`;allTextOutput+=`現住所: [${prefecture}] ${address}\\n`;allTextOutput+=`学歴: ${school} (${schoolType})\\n`;allTextOutput+=`希望職種: ${syokusyu.join(', ')}\\n`;allTextOutput+=`現年収: ${nenshuNow}万円 / 希望年収: ${nenshuKibouMin}～${nenshuKibouMax}万円\\n\\n`;allTextOutput+=`＜面談時情報＞\\n${comment}\\n\\n`;allTextOutput+=`＜備考＞\\n${bikou}\\n\\n`;successCount++;}catch(err){allTextOutput+=`==================================================\\n`;allTextOutput+=`【候補者 ${i+1}】 CANID: ${target.id} (${target.name}) - エラーのためデータ取得失敗\\n\\n`;}await new Promise(resolve=>setTimeout(resolve,300));}document.body.removeChild(progressDiv);try{const blob=new Blob([allTextOutput],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');const dateStr=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');a.href=url;a.download=`CAN一括抽出データ_${dateStr}.txt`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);alert(`抽出が完了しました！\\n取得成功: ${successCount} 件 / 対象: ${targetRows.length} 件`);}catch(e){alert('ファイルのダウンロードに失敗しました。');}})();">候補者データ一括抽出</a>
+        </div>
+
+        <div class="notice">
+            ※ ブラウザの「表示」メニューなどから「ブックマークバー（お気に入りバー）」を表示させた状態でドラッグしてください。
+        </div>
+
+        <h2>🛠️ 使い方</h2>
+        <ol>
+            <li>社内管理システムの「候補者一覧（検索結果）画面」を開きます。</li>
+            <li>お気に入りバーに登録した<code>候補者データ一括抽出</code>をクリックします。</li>
+            <li>確認画面が出ますので「OK」を押すと、バックグラウンドで最大50名分の自動解析がスタートし、左上にリアルタイムで進捗が表示されます。</li>
+            <li>完了すると、自動的にきれいなテキストファイル（.txt）が手元にダウンロードされます。</li>
+        </ol>
+    </div>
+
+</body>
+</html>
